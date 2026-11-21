@@ -16,12 +16,25 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.preference.Preference
 import androidx.preference.SwitchPreferenceCompat
 import com.android.dialer.R
 import com.android.dialer.expressive.ExpressivePreferenceFragment
 
 class VoipSettingsFragment : ExpressivePreferenceFragment() {
+    private val notificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()) { }
+    private val autoRecordingPermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()) { results ->
+        if (results.isNotEmpty() && results.values.all { it } &&
+            recordingPermissions.all {
+                requireContext().checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
+            } && autoRecording.isEnabled) {
+            autoRecording.isChecked = true
+        }
+        updateAutoRecordingSummary()
+    }
     private lateinit var access: Preference
     private lateinit var fullScreen: Preference
     private lateinit var notifications: Preference
@@ -43,7 +56,7 @@ class VoipSettingsFragment : ExpressivePreferenceFragment() {
                         ComponentName(context, VoipNotificationListener::class.java))
                     if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
                         PackageManager.PERMISSION_GRANTED) {
-                        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 } else {
                     VoipRecordingService.stop(context)
@@ -103,7 +116,7 @@ class VoipSettingsFragment : ExpressivePreferenceFragment() {
                     context.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
                 }
                 if (enabled == true && missing.isNotEmpty()) {
-                    requestPermissions(missing.toTypedArray(), AUTO_RECORDING_PERMISSIONS)
+                    autoRecordingPermissions.launch(missing.toTypedArray())
                     false
                 } else true
             }
@@ -144,20 +157,6 @@ class VoipSettingsFragment : ExpressivePreferenceFragment() {
         updateAutoRecordingSummary()
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>,
-        grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == AUTO_RECORDING_PERMISSIONS) {
-            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED } &&
-                recordingPermissions.all {
-                    requireContext().checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
-                } && autoRecording.isEnabled) {
-                autoRecording.isChecked = true
-            }
-            updateAutoRecordingSummary()
-        }
-    }
-
     private fun updateAutoRecordingSummary() {
         val context = requireContext()
         autoRecording.setSummary(when {
@@ -172,7 +171,6 @@ class VoipSettingsFragment : ExpressivePreferenceFragment() {
     }
 
     companion object {
-        private const val AUTO_RECORDING_PERMISSIONS = 2
         private val recordingPermissions = arrayOf(
             Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
     }

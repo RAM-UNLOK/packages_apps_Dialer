@@ -45,7 +45,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterIsInstance
 
 /** Material Symbols Rounded, shared by the Compose screens. */
-enum class DialerSymbol(@DrawableRes val drawableRes: Int) {
+enum class DialerSymbol(@param:DrawableRes val drawableRes: Int) {
     Expand(R.drawable.ic_ms_expand_more_24),
     Check(R.drawable.ic_ms_check_24),
     Sim(R.drawable.ic_ms_sim_card_24),
