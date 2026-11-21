@@ -121,6 +121,8 @@ public class StatusBarNotifier
   private final ContactInfoCache contactInfoCache;
   private final DialerRingtoneManager dialerRingtoneManager;
   private int currentNotification = NOTIFICATION_NONE;
+  /** Set when the user swiped the notification away and it must be posted again. */
+  private boolean repostDismissedNotification;
   private int callState = DialerCallState.INVALID;
   private int videoState = VideoProfile.STATE_AUDIO_ONLY;
   private int savedIcon = 0;
@@ -202,6 +204,21 @@ public class StatusBarNotifier
   @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
   public void updateNotification() {
     updateInCallNotification();
+  }
+
+  /**
+   * Called when the user swipes the in-call notification away. Re-posts it immediately if the
+   * call is still active, without re-ringing or re-launching the full-screen UI.
+   */
+  @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
+  void onNotificationDismissed() {
+    if (getCallToShow(CallList.getInstance()) == null) {
+      // Nothing to re-post; don't leave the flag set for the next, unrelated call.
+      return;
+    }
+    LogUtil.i("StatusBarNotifier.onNotificationDismissed", "re-posting dismissed notification");
+    repostDismissedNotification = true;
+    updateNotification();
   }
 
   /**
@@ -297,6 +314,8 @@ public class StatusBarNotifier
     }
     Trace.endSection(); // prepare work
 
+    final boolean isRepost = repostDismissedNotification;
+    repostDismissedNotification = false;
     if (!checkForChangeAndSaveData(
         iconResId,
         content.toString(),
@@ -306,7 +325,7 @@ public class StatusBarNotifier
         call.getVideoState(),
         notificationType,
         contactInfo.contactRingtoneUri,
-        callAudioState)) {
+        callAudioState) && !isRepost) {
       Trace.endSection();
       return;
     }
@@ -329,6 +348,9 @@ public class StatusBarNotifier
     // Builder for the notification shown when the device is unlocked or the user has set their
     // notification settings to 'show all notification content'.
     final Notification.Builder builder = getNotificationBuilder();
+    // Re-post the notification if the user swipes it away while the call is still active.
+    builder.setDeleteIntent(createNotificationPendingIntent(
+        context, NotificationBroadcastReceiver.ACTION_CALL_NOTIFICATION_DISMISSED));
     builder.setPublicVersion(publicBuilder.build());
 
     // Set up the main intent to send the user to the in-call screen
@@ -339,7 +361,9 @@ public class StatusBarNotifier
       case NOTIFICATION_INCOMING_CALL:
         builder.setChannelId(NotificationChannelId.INCOMING_CALL);
         // Set the intent as a full screen intent as well if a call is incoming
-        configureFullScreenIntent(builder, createLaunchPendingIntent(true /* isFullScreen */));
+        if (!isRepost) {
+          configureFullScreenIntent(builder, createLaunchPendingIntent(true /* isFullScreen */));
+        }
         // Set the notification category and bump the priority for incoming calls
         builder.setCategory(Notification.CATEGORY_CALL);
         if (currentNotification != NOTIFICATION_INCOMING_CALL) {
@@ -386,7 +410,8 @@ public class StatusBarNotifier
     // Fire off the notification
     Notification notification = builder.build();
 
-    if (dialerRingtoneManager.shouldPlayRingtone(callState, contactInfo.contactRingtoneUri)) {
+    if (!isRepost
+        && dialerRingtoneManager.shouldPlayRingtone(callState, contactInfo.contactRingtoneUri)) {
       notification.flags |= Notification.FLAG_INSISTENT;
       notification.sound = contactInfo.contactRingtoneUri;
       AudioAttributes.Builder audioAttributes = new AudioAttributes.Builder();
@@ -397,7 +422,7 @@ public class StatusBarNotifier
         notification.vibrate = VIBRATE_PATTERN;
       }
     }
-    if (dialerRingtoneManager.shouldPlayCallWaitingTone(callState)) {
+    if (!isRepost && dialerRingtoneManager.shouldPlayCallWaitingTone(callState)) {
       LogUtil.v("StatusBarNotifier.buildAndSendNotification", "playing call waiting tone");
       dialerRingtoneManager.playCallWaitingTone();
     }

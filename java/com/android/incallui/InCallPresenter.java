@@ -1741,6 +1741,14 @@ public class InCallPresenter implements CallList.Listener, AudioModeProvider.Aud
     }
   }
 
+  /** Re-posts the in-call notification after the user swiped it away. */
+  @SuppressLint("MissingPermission")
+  public void onCallNotificationDismissed() {
+    if (statusBarNotifier != null) {
+      statusBarNotifier.onNotificationDismissed();
+    }
+  }
+
   @SuppressLint("MissingPermission")
   @Override
   public void onAudioStateChanged(CallAudioState audioState) {

@@ -120,24 +120,7 @@ class VoipNotificationListener : NotificationListenerService() {
         }
     }
 
-    private fun notifyCall(call: VoipCall, alert: Boolean) {
-        val manager = getSystemService(NotificationManager::class.java)
-        val open = screenIntent(this, call.token)
-        val builder = Notification.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_ms_call_24)
-            .setContentTitle(call.caller)
-            .setContentText(getString(if (call.incoming) R.string.voip_incoming_app
-                else R.string.voip_call_app, call.appName))
-            .setContentIntent(open)
-            .setCategory(Notification.CATEGORY_CALL)
-            .setVisibility(Notification.VISIBILITY_PRIVATE)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-        call.actions.forEach { builder.addAction(Notification.Action.Builder(
-            null, it.title, it.intent).build()) }
-        if (alert && manager.canUseFullScreenIntent()) builder.setFullScreenIntent(open, true)
-        manager.notify(call.key, NOTIFICATION_ID, builder.build())
-    }
+    private fun notifyCall(call: VoipCall, alert: Boolean) = postCall(this, call, alert)
 
     private fun cancel(call: VoipCall) =
         getSystemService(NotificationManager::class.java).cancel(call.key, NOTIFICATION_ID)
@@ -168,6 +151,38 @@ class VoipNotificationListener : NotificationListenerService() {
                 Intent(context, VoipCallActivity::class.java)
                     .setData(Uri.Builder().scheme("dialer-voip").authority("call")
                         .appendPath(token).build())
+                    .putExtra(EXTRA_TOKEN, token),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+        /** Posts or updates the notification for [call]. Shared by the listener and the dismiss receiver. */
+        internal fun postCall(context: Context, call: VoipCall, alert: Boolean) {
+            val manager = context.getSystemService(NotificationManager::class.java)
+            val open = screenIntent(context, call.token)
+            val builder = Notification.Builder(context, CHANNEL)
+                .setSmallIcon(R.drawable.ic_ms_call_24)
+                .setContentTitle(call.caller)
+                .setContentText(context.getString(if (call.incoming) R.string.voip_incoming_app
+                    else R.string.voip_call_app, call.appName))
+                .setContentIntent(open)
+                .setCategory(Notification.CATEGORY_CALL)
+                .setVisibility(Notification.VISIBILITY_PRIVATE)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setDeleteIntent(dismissIntent(context, call.token))
+            call.actions.forEach { builder.addAction(Notification.Action.Builder(
+                null, it.title, it.intent).build()) }
+            if (alert && manager.canUseFullScreenIntent()) builder.setFullScreenIntent(open, true)
+            manager.notify(call.key, NOTIFICATION_ID, builder.build())
+        }
+
+        /** Re-posts a swiped-away call notification, but only while the call is still active. */
+        internal fun restoreCall(context: Context, token: String) {
+            VoipCalls.find(token)?.let { postCall(context, it, alert = false) }
+        }
+
+        private fun dismissIntent(context: Context, token: String): PendingIntent =
+            PendingIntent.getBroadcast(context, token.hashCode(),
+                Intent(context, VoipNotificationDismissReceiver::class.java)
                     .putExtra(EXTRA_TOKEN, token),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }

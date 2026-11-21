@@ -172,6 +172,10 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
+        <receiver
+            android:name="com.android.dialer.voip.VoipNotificationDismissReceiver"
+            android:exported="false" />
+
         <activity
             android:name="com.android.dialer.voip.VoipCallActivity"
             android:exported="false"
