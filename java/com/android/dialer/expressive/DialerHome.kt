@@ -338,7 +338,7 @@ fun DialerHome(
     } }
     recent?.let { selectedGroup ->
         val selected = selectedGroup.latest
-        val contact = data.people.firstOrNull { PhoneNumberUtils.compare(it.number, selected.number) }
+        val contact = data.people.firstOrNull { PhoneNumberUtils.compare(context, it.number, selected.number) }
         if (selected.callable) NumberActionsDialog(selected.displayName(), selected.number, contact?.starred == true, contact != null,
             onDismiss = { recent = null }, onCall = { recent = null; onCall(selected.number) },
             onVideo = { recent = null; onVideo(selected.number) }, onMessage = { recent = null; onMessage(selected.number) },

@@ -179,7 +179,7 @@ class VoipCallActivity : FragmentActivity() {
 
     private fun sendIntent(intent: PendingIntent) {
         val options = ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(
-            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE)
         intent.send(this, 0, null, null, null, null, options.toBundle())
     }
 }

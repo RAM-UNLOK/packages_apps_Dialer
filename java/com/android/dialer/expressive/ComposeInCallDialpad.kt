@@ -101,7 +101,7 @@ object ComposeInCallDialpad {
                                         if (pressed) Color.Black else neutralForeground,
                                         tween(100), label = "dtmf close content")
                                     FilledTonalIconButton(
-                                        onClick = { fragment.requireActivity().onBackPressed() },
+                                        onClick = { fragment.requireActivity().onBackPressedDispatcher.onBackPressed() },
                                         modifier = Modifier.clip(CircleShape),
                                         colors = IconButtonDefaults.filledTonalIconButtonColors(
                                             containerColor = background, contentColor = foreground),
@@ -109,7 +109,7 @@ object ComposeInCallDialpad {
                                         Symbol(DialerSymbol.Close, stringResource(R.string.expressive_close_keypad))
                                     }
                                 } else {
-                                    FilledTonalIconButton(onClick = { fragment.requireActivity().onBackPressed() }) {
+                                    FilledTonalIconButton(onClick = { fragment.requireActivity().onBackPressedDispatcher.onBackPressed() }) {
                                         Symbol(DialerSymbol.Close, stringResource(R.string.expressive_close_keypad))
                                     }
                                 }

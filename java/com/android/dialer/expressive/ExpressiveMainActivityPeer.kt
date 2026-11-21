@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.collect
 import android.provider.ContactsContract
 import android.telecom.TelecomManager
 import android.telephony.PhoneNumberUtils
-import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
@@ -94,7 +93,6 @@ class ExpressiveMainActivityPeer(private val activity: MainActivity) : MainActiv
     override fun onActivityCreate(saveInstanceState: Bundle?) {
         activity.supportActionBar?.hide()
         WindowCompat.setDecorFitsSystemWindows(activity.window, false)
-        activity.window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         hiddenNavItems = PreferenceManager.getDefaultSharedPreferences(activity)
             .getStringSet("hidden_nav_items", emptySet()) ?: emptySet()
         if (saveInstanceState != null) {
